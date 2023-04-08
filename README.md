@@ -5,3 +5,6 @@ MATLAB
 - associated functions that evaluate stuff
 Python
 - 
+
+Stag dataset is found at --> unzip, extract metadata and convert pressure to variable "Stag.mat" 
+http://stag.csail.mit.edu/datasets/classification_lite.zip
