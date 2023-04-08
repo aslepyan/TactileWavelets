@@ -17,3 +17,4 @@ The gernal methods used in the paper is as follows:
 3. Do the inverse transform for each candidate compression transform and feed the reconstructed signal to obtain a fourth qualifier, classificaion accuracy
 
 The STAG dataset can be found at the following link. For direct use in the above code, please extract the zipped folder, open the 'metadata.mat' file, and re-save the 'pressure' variable as a new variable 'Stag.mat'. 'Stag.mat' is used for the sparsifying survey.
+http://stag.csail.mit.edu/datasets/classification_lite.zip
