@@ -15,5 +15,8 @@ Explanation of code:
 - sparsify_D3_mse.m is the function that evaluates the 3D DCT, quantizes, and saves various quantifying metrics
 - All other files are helper functions or data used in figure generation or the main test script
 
-The tactile interaction data is the STAG dataset which can be found at the following link. For direct use in the above code, please extract the zipped folder, open the 'metadata.mat' file, and re-save the 'pressure' variable as a new variable 'Stag.mat'. 'Stag.mat' is used for the sparsifying survey.
+The tactile interaction data is the STAG dataset which can be found at the following link.
 http://stag.csail.mit.edu/datasets/classification_lite.zip
+
+Three additional (large) files are needed to run the test code and figure generation code and are found at this onedrive link, they should be placed in the same directory as the functions when executing:
+[Here](https://livejohnshopkins-my.sharepoint.com/:f:/g/personal/aslepya1_jh_edu/EolkBfklbJ9PuXpYAMATCF0B4ggfkofcBk__PjZKTxfghA?e=GpTKU5)
