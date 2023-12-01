@@ -1,4 +1,4 @@
-function [sparse_rep,sparse_recon,book_keeping,quant,mses,quants,sparsity,q_max,num_nnz_bits,energy_ratio,means] = sparsify_W2_mse(rawData,mse,wname,zero_zone)
+function [sparse_rep,sparse_recon,book_keeping,quant,mses,quants,sparsity,q_max,bpp,energy_ratio,means] = sparsify_W2_mse(rawData,mse,wname,zero_zone)
 % This function sparsifies the rawData looking at the entire sensor array
 % at each time point individually (2D). It sparsifies by taking the wavelet 
 % transform and then quantizing.
@@ -133,6 +133,7 @@ sparsity = nnz(sparse_rep) / (r*c*t);
 % what is the maximum quantized value?
 q_max = round(max(sparse_rep./quant,[],'all'));
 num_nnz_bits = nnz(sparse_rep) * ceil((log2(q_max))+1);
+bpp = num_nnz_bits / length(sparse_rep(:));
 
 % energy conservation
 comp_power = norm(sparse_rep(:));

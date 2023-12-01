@@ -1,4 +1,4 @@
-function [sparse_rep,sparse_recon,quant,mses,quants,sparsity,q_max,num_nnz_bits,energy_ratio,means] = sparsify_W3_mse(rawData,mse,wname,zero_zone)
+function [sparse_rep,sparse_recon,quant,mses,quants,sparsity,q_max,bpp,energy_ratio,means] = sparsify_W3_mse(rawData,mse,wname,zero_zone)
 % This function sparsifies the rawData looking at the entire sensor array
 % over time, collectively (3D). It sparsifies by taking the wavelet 
 % transform and then quantizing.
@@ -147,6 +147,7 @@ for i=1:length(sparse_rep.dec)
     sparsity = sparsity + nnz(sparse_rep.dec{i});
 end
 num_nnz_bits = sparsity * ceil((log2(q_max)));
+bpp = num_nnz_bits / length(sparse_rep(:));
 sparsity = sparsity / (r*c*t);
 
 % Calculate energy conservation
