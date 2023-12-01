@@ -19,3 +19,4 @@ The tactile interaction data is the STAG dataset which can be found at the follo
 http://stag.csail.mit.edu/datasets/classification_lite.zip
 
 Three additional (large) files are needed to run the test code and figure generation code and are found at this onedrive link, they should be placed in the same directory as the functions when executing:
+[Here](https://livejohnshopkins-my.sharepoint.com/:f:/g/personal/aslepya1_jh_edu/EolkBfklbJ9PuXpYAMATCF0B4ggfkofcBk__PjZKTxfghA?e=GpTKU5)
