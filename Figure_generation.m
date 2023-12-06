@@ -106,6 +106,133 @@ for i=1:length(sub_wavelets)
     ylim([min(psi) max(psi)])
 end
 %% Fig 5
+close all
+clear all
+load('filt_stag.mat')
+w=1;
+reshaped_raw = reshape(filt_stag, [1024 33550]);
+%sample = reshaped_raw(261,4800:7000);
+sample = reshaped_raw(261,4800:5200);
+avg = mean(sample);
+sample = sample - avg;
+wname = 'db1';
+[wc,book_keeping] = wavedec(sample,2,wname);
+mse = 0.01;
+
+subplot(4,2,1)
+sig = sample;
+plot(sig,'LineWidth',w)
+xlim([1 length(sig)])
+ylim([min(sig) max(sig)])
+title('Original Signal')
+
+subplot(4,2,3)
+sig = wc(1:book_keeping(1));
+plot(sig,'LineWidth',w)
+xlim([1 length(sig)])
+ylim([min(sig) max(sig)])
+title('Approximation 2')
+
+subplot(4,2,5)
+sig = wc(book_keeping(1)+1:book_keeping(1)+book_keeping(2));
+plot(sig,'LineWidth',w)
+xlim([1 length(sig)])
+ylim([min(sig) max(sig)])
+title('Details 2')
+
+subplot(4,2,7)
+sig = wc(book_keeping(1)+book_keeping(2)+1:end);
+plot(sig,'LineWidth',w)
+xlim([1 length(sig)])
+ylim([min(sig) max(sig)])
+title('Details 1')
+
+% Search for optimal Q
+
+tolerance = strsplit(num2str(mse),'.');
+tolerance = numel(tolerance{2});
+tolerance = 0.5*10^-(tolerance+1);
+
+mx = max(wc);
+mn = 1e-20;
+quant = mn;
+
+% Search for best quantizer
+searching = 1;
+
+while (searching)
+    % Quantize
+    x = quant*(fix(wc./quant));
+
+    % Reconstruct and calculate MSE
+    x_hat = waverec(x,book_keeping,wname);
+    % add back means
+
+    MSE = mean(((sample-x_hat).^2))/avg;
+
+    % Update quant through binary search
+    old_quant = quant;
+    if MSE < mse % not enough compression, quantize more
+        mn = quant;
+        %quant = ((iter+1)/iter)*(quant + mx)/2;
+        quant = (quant + mx)/2;
+        %prev_quant - (prev_quant + quant)/2;
+    end
+    if MSE > mse % too much compression, quantize less
+        mx = quant;
+        %quant = (iter/(iter+1))*(quant + mn)/2;
+        quant = (quant + mn)/2;
+        %prev_quant + (prev_quant + quant)/2;
+    end
+
+    if abs(quant - old_quant) < tolerance % if values stop changing
+        searching = 0;
+    end
+
+    if (mse - tolerance < MSE) && (MSE < mse + tolerance) % if correct value is reached
+        searching = 0;
+    end
+
+end
+temp_sp = x;
+sparsi = nnz(temp_sp) / (length(sample));
+
+q_max = round(max(temp_sp./quant,[],'all'));
+num_nnz_bits = nnz(temp_sp) * ceil((log2(q_max))+1);
+bpp = num_nnz_bits / length(temp_sp(:));
+
+subplot(4,2,4)
+sig = temp_sp(1:book_keeping(1));
+plot(sig,'LineWidth',w)
+xlim([1 length(sig)])
+ylim([min(sig) max(sig)])
+title('Quantized Approximation 2')
+
+subplot(4,2,6)
+sig = temp_sp(book_keeping(1)+1:book_keeping(1)+book_keeping(2));
+plot(sig,'LineWidth',w)
+xlim([1 length(sig)])
+%ylim([min(sig) max(sig)])
+title('Quantized Details 2')
+
+subplot(4,2,8)
+sig = temp_sp(book_keeping(1)+book_keeping(2)+1:end);
+plot(sig,'LineWidth',w)
+xlim([1 length(sig)])
+%ylim([min(sig) max(sig)])
+title('Quantized Details 1')
+
+subplot(4,2,2)
+plot(x_hat,'LineWidth',w)
+xlim([1 length(x_hat)])
+ylim([min(x_hat) max(x_hat)])
+title('Sparse Reconstruction')
+
+%top = 'Wavelet Compression by Quantization';
+%subt = ['Wavelet = ',wname, '; NMSE = ',num2str(mse,2), '; Sparsity = ',num2str(sparsi,2),'; BPP = ',num2str(bpp,3)];
+%sgt = sgtitle({['{\bf\fontsize{12}' top '}'],['{\fontsize{12}' subt '}']});\
+
+%% Fig 6
 clear all
 load('master_data_fixed.mat')
 family_names = {'beyl','bior','bl','coif','db','dmey','fk','han','mb', ...
@@ -193,11 +320,11 @@ raw = sscanf(hex.','#%2x%2x%2x',[3,Inf]).';
 
 figure()
 
-wavs = [2,5,7,8,9,10,11];
+wavs = [2,5,7,8,10,11];
 for i = wavs
 %for i=1:12 %shape determined by family, edge color is Red (1D), face color is filter size
     wav = wavelets{i};
-    semilogy(mses(:,i))
+    semilogy(mses(:,i),'LineWidth',5)
     hold on
 end
 xlim([1 49])
@@ -211,7 +338,7 @@ figure()
 for i = wavs
 %for i=1:12 %shape determined by family, edge color is Red (1D), face color is filter size
     wav = wavelets{i};
-    semilogy(psnrs(:,i))
+    semilogy(psnrs(:,i),'LineWidth',5)
     hold on
 end
 xlim([1 49])
@@ -234,15 +361,15 @@ end
  
 for i = wavs
 %for i=1:12
-semilogy(sort(abs(sorted_coeffs{i}),'descend'))
+semilogy(sort(abs(sorted_coeffs{i}),'descend'),'LineWidth',5)
 hold on
 end
-legend(wavelets(wavs),'Location','bestoutside','Orientation','horizontal','NumColumns',4)
+legend(wavelets(wavs),'Location','bestoutside','Orientation','horizontal','NumColumns',3)
 xlim([1 49])
 
 ylabel('Coefficient Magnitude')
 xlabel('Coefficient Number')
-%% Figure 6
+%% Figure 7 and Fig 8p2
 clear all
 close all
 load('master_data_fixed.mat')
@@ -269,6 +396,15 @@ nmses = [0;cell2mat(master_data(2:end,10))];
 close all
 margin = 5e-4*1.2;
 
+d1ms = [];
+d1ss = [];
+
+d2ms = [];
+d2ss = [];
+
+d3ms = [];
+d3ss = [];
+
 for j = 1:4
 f = figure;
 nump = 0;
@@ -289,17 +425,25 @@ end
 d1max = max(xs(ds==1));
 d1min = min(xs(ds==1));
 d1mean = mean(xs(ds==1));
+d1ms = [d1ms, d1mean];
 d1std = std(xs(ds==1));
+d1ss = [d1ss, d1std];
+
 
 d2max = max(xs(ds==2));
 d2min = min(xs(ds==2));
 d2mean = mean(xs(ds==2));
+d2ms = [d2ms, d2mean];
 d2std = std(xs(ds==2));
+d2ss = [d2ss, d2std];
 
 d3max = max(xs(ds==3));
 d3min = min(xs(ds==3));
 d3mean = mean(xs(ds==3));
+d3ms = [d3ms, d3mean];
 d3std = std(xs(ds==3));
+d3ss = [d3ss, d3std];
+
 
 s = 2;
 x = [MSEs(j)-margin MSEs(j)-margin MSEs(j)+margin MSEs(j)+margin];
@@ -364,7 +508,285 @@ xlim([MSEs(j)-margin MSEs(j)+margin])
 f.Position = [100 100 280 700];
 end
 
-%% Fig 7
+figure()
+m=5;
+plot(MSEs,d1ms,'red','LineWidth',m)
+hold on
+d1dev = d1ms-d1ss;
+d1dev(d1dev<0) = 1e-3;
+patch([MSEs flip(MSEs)], [d1dev flip(d1ms+d1ss)], 'red', 'FaceAlpha',0.25, 'EdgeColor','none')
+plot(MSEs,d2ms,'green','LineWidth',m)
+hold on
+patch([MSEs flip(MSEs)], [d2ms-d2ss flip(d2ms+d2ss)], 'green', 'FaceAlpha',0.25, 'EdgeColor','none')
+plot(MSEs,d3ms,'blue','LineWidth',m)
+hold on
+patch([MSEs flip(MSEs)], [d3ms-d3ss flip(d3ms+d3ss)], 'blue', 'FaceAlpha',0.25, 'EdgeColor','none')
+
+set(gca,'xscale','log')
+set(gca,'yscale','log')
+xlabel('NMSE')
+ylabel('Sparsity')
+legend('1D \mu','1D \sigma','2D \mu','2D \sigma','3D \mu','3D \sigma','Location','best')
+ax=gca;
+k=.025;
+ax.TickLength = [k, k];
+
+%%  Fig 8 p1
+clear all
+close all
+% best in each dimension: sym4, db1, mb4.2... pull the numbers from the
+% table?
+w=4;
+k=.025;
+
+nmses = [0.01, 0.0043, 0.0015, 0.0001];
+sym4_1d_s = [0.00497367779531947,0.0140489180906389,0.0358596361905646,0.158693815007429];
+db1_2d_s = [0.086048051, 0.157822221963487, 0.255047940340909, 0.509747985748882];
+mb42_3d_s = [0.0298093156203428, 0.0724540098733234, 0.135201483327124, 0.335553686195976];
+
+sym4_1d__bpp = [0.049736778, 0.154538099, 0.430315634, 2.380407225];
+db1_2d_bpp = [1.204672713,2.525155551, 4.590862926, 11.21445569];
+mb42_3d_bpp = [0.357711787, 1.159264158, 2.4336267, 7.382181096];
+
+subplot(1,2,1)
+plot(nmses,sym4_1d_s,'red','LineWidth',w)
+hold on
+plot(nmses,db1_2d_s,'green','LineWidth',w)
+plot(nmses,mb42_3d_s,'blue','LineWidth',w)
+set(gca,'xscale','log')
+set(gca,'yscale','log')
+xlabel('NMSE')
+ylabel('Sparsity')
+legend('SYM4 1D','DB1 2D','MB4.2 3D','Location','best')
+ax=gca;
+ax.TickLength = [k, k];
+
+subplot(1,2,2)
+plot(nmses,sym4_1d__bpp,'red','LineWidth',w)
+hold on
+plot(nmses,db1_2d_bpp,'green','LineWidth',w)
+plot(nmses,mb42_3d_bpp,'blue','LineWidth',w)
+set(gca,'xscale','log')
+set(gca,'yscale','log')
+xlabel('NMSE')
+ylabel('Bits Per Pixel')
+legend('SYM4 1D','DB1 2D','MB4.2 3D','Location','best')
+ax=gca;
+ax.TickLength = [k, k];
+
+
+
+%% Fig 9
+clear all
+close all
+load('filt_stag.mat')
+load('ind_nnz.mat')
+load('zero_zone.mat')
+
+startt = 12364;
+endt = 12412;
+
+%(a)
+subplot(2,4,1)
+
+az = -37.5;
+el = 15;
+
+examp = 19/7;%25;
+exampi = 20;
+
+segment = filt_stag(:,:,startt:endt); %4900, 5030
+v_segment = reshape(segment, [32*32 length(segment(1,1,:))]);
+vnnz_segment = v_segment(ind_nnz,:);% - 512;
+sq_seg = zeros(224,224);
+num = 1;
+for i=1:7
+    for j=1:7
+        sq_seg(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = segment(:,:,num);
+        num = num + 1;
+    end
+end
+
+t = 0:1/7:48/7;
+plot(t,vnnz_segment')
+xline(examp,'--r');
+xlim([0 t(end)])
+ylabel('ADC Reading')
+xlabel('Time (sec)')
+title('Original')
+
+norm=vnnz_segment;
+norm = norm - min(norm,[],'all');
+norm = norm ./ (max(norm,[],'all'));
+e_overall = entropy(norm);
+e_temporal = 0;
+for i = 1:548 %loop through each sensor
+    e_temporal = e_temporal + entropy(norm(i,:));
+end
+e_spatial = 0;
+for i = 1:49 %loop through each sensor
+    e_spatial = e_spatial + entropy(norm(:,i));
+end
+
+%(b) best 1d =  SYM 4
+load('nmse_0.01_wavelet_sym4_1D');
+sym4_1 = answers{2,1};
+sym4_1 = sym4_1(:,:,startt:endt); %4900, 5030
+examp_sym4_1 = sym4_1(:,:,exampi);
+sq_mb42_1 = zeros(224,224);
+num = 1;
+for i=1:7
+    for j=1:7
+        sq_mb42_1(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = sym4_1(:,:,num);
+        num = num + 1;
+    end
+end
+sym4_1 = reshape(sym4_1, [32*32 length(sym4_1(1,1,:))]);
+sym4_1 = sym4_1(ind_nnz,:);
+subplot(2,4,2)
+%mesh(mb42_1)
+plot(t,sym4_1')
+xline(examp,'--r');
+xlabel('Time (sec)')
+title('1D DWT SYM4')
+
+%view(az,el)
+sym4_1 = sym4_1 - min(sym4_1,[],'all');
+sym4_1 = sym4_1 ./ (max(sym4_1,[],'all'));
+e_overall_1 = entropy(sym4_1);
+e_temporal_1 = 0;
+for i = 1:548 %loop through each sensor
+    e_temporal_1 = e_temporal_1 + entropy(sym4_1(i,:));
+end
+e_spatial_1 = 0;
+for i = 1:49 %loop through each sensor
+    e_spatial_1 = e_spatial_1 + entropy(sym4_1(:,i));
+end
+
+%(c) best 2d = db1
+load('nmse_0.01_wavelet_db1_2D');
+db1_2 = answers{2,1};
+db1_2 = db1_2(:,:,startt:endt); %4900, 5030
+examp_db1_2 = db1_2(:,:,exampi);
+sq_db1_2 = zeros(224,224);
+num = 1;
+for i=1:7
+    for j=1:7
+        sq_db1_2(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = db1_2(:,:,num);
+        num = num + 1;
+    end
+end
+db1_2 = reshape(db1_2, [32*32 length(db1_2(1,1,:))]);
+db1_2 = db1_2(ind_nnz,:);
+subplot(2,4,3)
+%mesh(db1_2)
+plot(t,db1_2')
+xline(examp,'--r');
+xlabel('Time (sec)')
+title('2D DWT DB1')
+
+%view(az,el)
+db1_2 = db1_2 - min(db1_2,[],'all');
+db1_2 = db1_2 ./ (max(db1_2,[],'all'));
+e_overall_2 = entropy(db1_2);
+e_temporal_2 = 0;
+for i = 1:548 %loop through each sensor
+    e_temporal_2 = e_temporal_2 + entropy(db1_2(i,:));
+end
+e_spatial_2 = 0;
+for i = 1:49 %loop through each sensor
+    e_spatial_2 = e_spatial_2 + entropy(db1_2(:,i));
+end
+
+%(d) best 3d = mb4.2
+load('nmse_0.01_wavelet_mb4.2_3D');
+mb42_3 = answers{2,1};
+mb42_3 = mb42_3(:,:,startt:endt); %4900, 5030
+examp_mb42_3 = mb42_3(:,:,exampi);
+sq_mb42_3 = zeros(224,224);
+num = 1;
+for i=1:7
+    for j=1:7
+        sq_mb42_3(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = mb42_3(:,:,num);
+        num = num + 1;
+    end
+end
+mb42_3 = reshape(mb42_3, [32*32 length(mb42_3(1,1,:))]);
+mb42_3 = mb42_3(ind_nnz,:);
+subplot(2,4,4)
+plot(t,mb42_3')
+xline(examp,'--r');
+xlabel('Time (sec)')
+title('3D DWT MB4.2')
+
+mb42_3 = mb42_3 - min(mb42_3,[],'all');
+mb42_3 = mb42_3 ./ (max(mb42_3,[],'all'));
+e_overall_3 = entropy(mb42_3);
+e_temporal_3 = 0;
+for i = 1:548 %loop through each sensor
+    e_temporal_3 = e_temporal_3 + entropy(mb42_3(i,:));
+end
+e_spatial_3 = 0;
+for i = 1:49 %loop through each sensor
+    e_spatial_3 = e_spatial_3 + entropy(mb42_3(:,i));
+end
+
+% plot the square images
+subplot(2,4,5)
+v = segment(:,:,exampi);
+examp_original = reshape(v,[1024 1]);
+examp_original = examp_original(ind_nnz);
+v(logical(zero_zone)) = nan;
+%surf(v)
+imagesc(v)
+xlabel('Taxel')
+ylabel('Taxel')
+
+subplot(2,4,6)
+v = examp_sym4_1;
+vv = reshape(v,[1024,1]);
+vv = vv(ind_nnz);
+err = nmse(examp_original,vv)
+v(logical(zero_zone)) = nan;
+%surf(v)
+imagesc(v)
+xlabel('Taxel')
+
+subplot(2,4,7)
+v = examp_db1_2;
+vv = reshape(v,[1024,1]);
+vv = vv(ind_nnz);
+err = nmse(examp_original,vv)
+v(logical(zero_zone)) = nan;
+%surf(v)
+imagesc(v)
+xlabel('Taxel')
+
+subplot(2,4,8)
+v = examp_mb42_3;
+vv = reshape(v,[1024,1]);
+vv = vv(ind_nnz);
+err = nmse(examp_original,vv)
+v(logical(zero_zone)) = nan;
+%surf(v)
+imagesc(v)
+xlabel('Taxel')
+
+e_spatial = e_spatial / 548;
+e_spatial_1 = e_spatial_1 / 548;
+e_spatial_2 = e_spatial_2 / 548;
+e_spatial_3 = e_spatial_3 / 548;
+
+e_temporal = e_temporal / 49;
+e_temporal_1 = e_temporal_1 / 49;
+e_temporal_2 = e_temporal_2 / 49;
+e_temporal_3 = e_temporal_3 / 49;
+
+table = [e_temporal, e_spatial, e_overall; ...
+    e_temporal_1, e_spatial_1, e_overall_1; ...
+    e_temporal_2, e_spatial_2, e_overall_2; ...
+    e_temporal_3, e_spatial_3, e_overall_3]';
+%% Fig 10
 load('filt_stag.mat')
 load('ind_nnz.mat')
 close all
@@ -548,303 +970,7 @@ title('Spatial Error')
 ylim([0 spatial])
 xlim([1 max(t)])
 xlabel('Time (sec)')
-%% Fig 8
-clear all
-load('filt_stag.mat')
-load('ind_nnz.mat')
-load('zero_zone.mat')
-
-startt = 12364;
-endt = 12412;
-
-%(a)
-subplot(2,4,1)
-
-az = -37.5;
-el = 15;
-
-examp = 19/7;%25;
-exampi = 20;
-
-segment = filt_stag(:,:,startt:endt); %4900, 5030
-v_segment = reshape(segment, [32*32 length(segment(1,1,:))]);
-vnnz_segment = v_segment(ind_nnz,:);% - 512;
-sq_seg = zeros(224,224);
-num = 1;
-for i=1:7
-    for j=1:7
-        sq_seg(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = segment(:,:,num);
-        num = num + 1;
-    end
-end
-
-t = 0:1/7:48/7;
-plot(t,vnnz_segment')
-xline(examp,'--r');
-xlim([0 t(end)])
-ylabel('ADC Reading')
-xlabel('Time (sec)')
-title('Original')
-
-norm=vnnz_segment;
-norm = norm - min(norm,[],'all');
-norm = norm ./ (max(norm,[],'all'));
-e_overall = entropy(norm);
-e_temporal = 0;
-for i = 1:548 %loop through each sensor
-    e_temporal = e_temporal + entropy(norm(i,:));
-end
-e_spatial = 0;
-for i = 1:49 %loop through each sensor
-    e_spatial = e_spatial + entropy(norm(:,i));
-end
-
-%(b) best 1d =  SYM 4
-load('nmse_0.01_wavelet_sym4_1D');
-sym4_1 = answers{2,1};
-sym4_1 = sym4_1(:,:,startt:endt); %4900, 5030
-examp_sym4_1 = sym4_1(:,:,exampi);
-sq_mb42_1 = zeros(224,224);
-num = 1;
-for i=1:7
-    for j=1:7
-        sq_mb42_1(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = sym4_1(:,:,num);
-        num = num + 1;
-    end
-end
-sym4_1 = reshape(sym4_1, [32*32 length(sym4_1(1,1,:))]);
-sym4_1 = sym4_1(ind_nnz,:);
-subplot(2,4,2)
-%mesh(mb42_1)
-plot(t,sym4_1')
-xline(examp,'--r');
-xlabel('Time (sec)')
-title('1D DWT SYM4')
-
-%view(az,el)
-sym4_1 = sym4_1 - min(sym4_1,[],'all');
-sym4_1 = sym4_1 ./ (max(sym4_1,[],'all'));
-e_overall_1 = entropy(sym4_1);
-e_temporal_1 = 0;
-for i = 1:548 %loop through each sensor
-    e_temporal_1 = e_temporal_1 + entropy(sym4_1(i,:));
-end
-e_spatial_1 = 0;
-for i = 1:49 %loop through each sensor
-    e_spatial_1 = e_spatial_1 + entropy(sym4_1(:,i));
-end
-
-%(c) best 2d = db1
-load('nmse_0.01_wavelet_db1_2D');
-db1_2 = answers{2,1};
-db1_2 = db1_2(:,:,startt:endt); %4900, 5030
-examp_db1_2 = db1_2(:,:,exampi);
-sq_db1_2 = zeros(224,224);
-num = 1;
-for i=1:7
-    for j=1:7
-        sq_db1_2(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = db1_2(:,:,num);
-        num = num + 1;
-    end
-end
-db1_2 = reshape(db1_2, [32*32 length(db1_2(1,1,:))]);
-db1_2 = db1_2(ind_nnz,:);
-subplot(2,4,3)
-%mesh(db1_2)
-plot(t,db1_2')
-xline(examp,'--r');
-xlabel('Time (sec)')
-title('2D DWT DB1')
-
-%view(az,el)
-db1_2 = db1_2 - min(db1_2,[],'all');
-db1_2 = db1_2 ./ (max(db1_2,[],'all'));
-e_overall_2 = entropy(db1_2);
-e_temporal_2 = 0;
-for i = 1:548 %loop through each sensor
-    e_temporal_2 = e_temporal_2 + entropy(db1_2(i,:));
-end
-e_spatial_2 = 0;
-for i = 1:49 %loop through each sensor
-    e_spatial_2 = e_spatial_2 + entropy(db1_2(:,i));
-end
-
-%(d) best 3d = mb4.2
-load('nmse_0.01_wavelet_mb4.2_3D');
-mb42_3 = answers{2,1};
-mb42_3 = mb42_3(:,:,startt:endt); %4900, 5030
-examp_mb42_3 = mb42_3(:,:,exampi);
-sq_mb42_3 = zeros(224,224);
-num = 1;
-for i=1:7
-    for j=1:7
-        sq_mb42_3(32*(i-1)+1:32*(i),32*(j-1)+1:32*(j)) = mb42_3(:,:,num);
-        num = num + 1;
-    end
-end
-mb42_3 = reshape(mb42_3, [32*32 length(mb42_3(1,1,:))]);
-mb42_3 = mb42_3(ind_nnz,:);
-subplot(2,4,4)
-plot(t,mb42_3')
-xline(examp,'--r');
-xlabel('Time (sec)')
-title('3D DWT MB4.2')
-
-mb42_3 = mb42_3 - min(mb42_3,[],'all');
-mb42_3 = mb42_3 ./ (max(mb42_3,[],'all'));
-e_overall_3 = entropy(mb42_3);
-e_temporal_3 = 0;
-for i = 1:548 %loop through each sensor
-    e_temporal_3 = e_temporal_3 + entropy(mb42_3(i,:));
-end
-e_spatial_3 = 0;
-for i = 1:49 %loop through each sensor
-    e_spatial_3 = e_spatial_3 + entropy(mb42_3(:,i));
-end
-
-% plot the square images
-subplot(2,4,5)
-v = segment(:,:,exampi);
-v(logical(zero_zone)) = nan;
-%surf(v)
-imagesc(v)
-xlabel('Taxel')
-ylabel('Taxel')
-
-subplot(2,4,6)
-v = examp_sym4_1;
-v(logical(zero_zone)) = nan;
-%surf(v)
-imagesc(v)
-xlabel('Taxel')
-
-subplot(2,4,7)
-v = examp_db1_2;
-v(logical(zero_zone)) = nan;
-%surf(v)
-imagesc(v)
-xlabel('Taxel')
-
-subplot(2,4,8)
-v = examp_mb42_3;
-v(logical(zero_zone)) = nan;
-%surf(v)
-imagesc(v)
-xlabel('Taxel')
-
-e_spatial = e_spatial / 548;
-e_spatial_1 = e_spatial_1 / 548;
-e_spatial_2 = e_spatial_2 / 548;
-e_spatial_3 = e_spatial_3 / 548;
-
-e_temporal = e_temporal / 49;
-e_temporal_1 = e_temporal_1 / 49;
-e_temporal_2 = e_temporal_2 / 49;
-e_temporal_3 = e_temporal_3 / 49;
-
-table = [e_temporal, e_spatial, e_overall; ...
-    e_temporal_1, e_spatial_1, e_overall_1; ...
-    e_temporal_2, e_spatial_2, e_overall_2; ...
-    e_temporal_3, e_spatial_3, e_overall_3]';
-%% Fig 9
-clear all
-close all
-load('master_data_fixed.mat')
-MSEs = [0.01,0.0043,0.0015,0.0001];
-
-family_names = {'beyl','bior','bl','coif','db','dmey','fk','han','mb', ...
-    'rbio','sym','vaid'};
-shape = {"+","pentagram","v","square","o","x","^","<",">","hexagram", ...
-    "diamond","*"}; % family name
-N=15;
-hex = ['#1f77b4';'#aec7e8';'#ff7f0e';'#ffbb78';'#2ca02c';'#98df8a';'#d62728';'#ff9896';'#9467bd';'#c5b0d5';'#8c564b';'#c49c94';'#e377c2';'#f7b6d2';'#7f7f7f';'#c7c7c7';'#bcbd22';'#dbdb8d';'#17becf';'#9edae5'];
-raw = sscanf(hex.','#%2x%2x%2x',[3,Inf]).';
-num = size(raw,1);
-facecolors = raw(1+mod(0:N-1,num),:) / 255;
-edgecolors = {'red','green','blue'}; %1D, 2D, 3D
-
-
-
-% NEW FIGURE
-f = figure()
-Sparsities = [0;cell2mat(master_data(2:end,3))];
-
-
-all_f = [];
-all_s = [];
-for j = 1:4
-    subplot(2,2,5-j)
-    fsize = [];
-    spars = [];
-    for i=2:900 %900
-        % do only 1D data
-        if (master_data{i, 10} == MSEs(j)) %if MSE = 0.01
-            if (master_data{i, 9} == 1)
-                % remove outlier rbio3.1 and dmey
-                if (strcmp([master_data{i,6},num2str(master_data{i,7})], 'rbio3.1'))
-                    continue
-                end
-                if (strcmp([master_data{i,6},num2str(master_data{i,7})],'dmey'))
-                    continue
-                end
-                if (strcmp([master_data{i,6},num2str(master_data{i,7})],'coif5'))
-                    continue
-                end
-                %if family name = ... set the shape (6)
-                %if filter size = ... set the face color (8)
-                %if dimension = ... set the edge color (9)
-                x = strmatch(master_data{i, 6}, family_names);
-
-                s = Sparsities(i);
-                wname = [master_data{i,6},num2str(master_data{i,7})];
-                [h,~,~,~] = wfilters(wname);
-                l = length(h);
-
-                fsize = [fsize, l];
-                spars = [spars, s];
-                plot(l, s, shape{x}, ...
-                    'MarkerSize',17, 'MarkerEdgeColor', ...
-                    edgecolors{master_data{i, 9}}, 'MarkerFaceColor', ...
-                    facecolors(master_data{i, 8},:),'LineWidth', 1);
-                % marker size = 20
-                hold on
-                %nump = nump+1;
-            end
-        end
-    end
-    % for each value in fsize, 
-    [sortedF,I] = sort(fsize);
-    sortedS = spars(I);
-    % for each value in sortedF, get the average values (and STD) or S
-    Fs = unique(sortedF);
-    mSs = zeros(1,length(Fs));
-    sdSs = zeros(1,length(Fs));
-    for K = 1:length(Fs)
-        ind = find(sortedF == Fs(K));
-        mSs(K) = median(sortedS(ind));
-        sdSS(K) = std(sortedS(ind));
-    end
-
-
-    %p = polyfit(Fs,mSs,2);
-    [p,SD] = polyfit(sortedF,sortedS,1);
-    x1 = linspace(1 , 24);
-    [y1,delta] = polyval(p,x1,SD);
-    plot(x1,y1,'LineWidth',10)
-    plot(x1,y1+2*delta,'m--',x1,y1-2*delta,'m--')
-    %legend('Linear Fit','95% Prediction Interval')
-
-    all_f = [all_f; fsize];
-    all_s = [all_s; spars];
-    set(gca,'yscale','log')
-    ylim([-inf max(spars)*1.1])
- %   set(gca,'xscale','log')
-    xlabel('Filter Size')
-    ylabel('Sparsity')
-    title(['NMSE = ',num2str(MSEs(j))])
-    f.Position = [100 100 300 400];
-end
-%% Fig 10
+%% Fig 11
 clear all
 close all
 load('filt_stag.mat')
@@ -927,3 +1053,99 @@ xlim([1 length(psi)])
 title('Wavelet Function')
 sgtitle('Bior6.8')
 f.Position = [100 100 xsize ysize];
+%% Fig 12
+clear all
+close all
+load('master_data_fixed.mat')
+MSEs = [0.01,0.0043,0.0015,0.0001];
+
+family_names = {'beyl','bior','bl','coif','db','dmey','fk','han','mb', ...
+    'rbio','sym','vaid'};
+shape = {"+","pentagram","v","square","o","x","^","<",">","hexagram", ...
+    "diamond","*"}; % family name
+N=15;
+hex = ['#1f77b4';'#aec7e8';'#ff7f0e';'#ffbb78';'#2ca02c';'#98df8a';'#d62728';'#ff9896';'#9467bd';'#c5b0d5';'#8c564b';'#c49c94';'#e377c2';'#f7b6d2';'#7f7f7f';'#c7c7c7';'#bcbd22';'#dbdb8d';'#17becf';'#9edae5'];
+raw = sscanf(hex.','#%2x%2x%2x',[3,Inf]).';
+num = size(raw,1);
+facecolors = raw(1+mod(0:N-1,num),:) / 255;
+edgecolors = {'red','green','blue'}; %1D, 2D, 3D
+
+
+f = figure()
+Sparsities = [0;cell2mat(master_data(2:end,3))];
+
+
+all_f = [];
+all_s = [];
+for j = 1:4
+    subplot(2,2,5-j)
+    fsize = [];
+    spars = [];
+    for i=2:900 %900
+        % do only 1D data
+        if (master_data{i, 10} == MSEs(j)) %if MSE = 0.01
+            if (master_data{i, 9} == 1)
+                % remove outlier rbio3.1 and dmey
+                if (strcmp([master_data{i,6},num2str(master_data{i,7})], 'rbio3.1'))
+                    continue
+                end
+                if (strcmp([master_data{i,6},num2str(master_data{i,7})],'dmey'))
+                    continue
+                end
+                if (strcmp([master_data{i,6},num2str(master_data{i,7})],'coif5'))
+                    continue
+                end
+                %if family name = ... set the shape (6)
+                %if filter size = ... set the face color (8)
+                %if dimension = ... set the edge color (9)
+                x = strmatch(master_data{i, 6}, family_names);
+
+                s = Sparsities(i);
+                wname = [master_data{i,6},num2str(master_data{i,7})];
+                [h,~,~,~] = wfilters(wname);
+                l = length(h);
+
+                fsize = [fsize, l];
+                spars = [spars, s];
+                plot(l, s, shape{x}, ...
+                    'MarkerSize',17, 'MarkerEdgeColor', ...
+                    edgecolors{master_data{i, 9}}, 'MarkerFaceColor', ...
+                    facecolors(master_data{i, 8},:),'LineWidth', 1);
+                % marker size = 20
+                hold on
+                %nump = nump+1;
+            end
+        end
+    end
+    % for each value in fsize, 
+    [sortedF,I] = sort(fsize);
+    sortedS = spars(I);
+    % for each value in sortedF, get the average values (and STD) or S
+    Fs = unique(sortedF);
+    mSs = zeros(1,length(Fs));
+    sdSs = zeros(1,length(Fs));
+    for K = 1:length(Fs)
+        ind = find(sortedF == Fs(K));
+        mSs(K) = median(sortedS(ind));
+        sdSS(K) = std(sortedS(ind));
+    end
+
+
+    %p = polyfit(Fs,mSs,2);
+    [p,SD] = polyfit(sortedF,sortedS,1);
+    x1 = linspace(1 , 24);
+    [y1,delta] = polyval(p,x1,SD);
+    plot(x1,y1,'LineWidth',10)
+    plot(x1,y1+2*delta,'m--',x1,y1-2*delta,'m--')
+    %legend('Linear Fit','95% Prediction Interval')
+
+    all_f = [all_f; fsize];
+    all_s = [all_s; spars];
+    set(gca,'yscale','log')
+    ylim([-inf max(spars)*1.1])
+ %   set(gca,'xscale','log')
+    xlabel('Filter Size')
+    ylabel('Sparsity')
+    title(['NMSE = ',num2str(MSEs(j))])
+    f.Position = [100 100 300 400];
+end
