@@ -1,5 +1,5 @@
 # Compressing and Sparsifying Tactile Interactions by Wavelet Transform
-This repository holds the MATLAB code, supplementary data, and functions used to generate the results and figures in the paper: “Compressing and Sparsifying Tactile Interactions by Wavelet Transform” by A. Slepyan, M. Zakariaie, and N. Thakor which has been submitted to the IEEE TBioCAS journal.
+This repository holds the MATLAB code, supplementary data, and functions used to generate the results and figures in the paper: “Compressing and Sparsifying Tactile Interactions by Wavelet Transform” by A. Slepyan, M. Zakariaie, T. Tran, and N. Thakor.
 
 Explanation of supplemental:
 - TestResults.xlsx contains the full results of the test
